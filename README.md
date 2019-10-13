@@ -29,3 +29,15 @@ Heavily based on [fluent-plugin-growthforecast][2]
   [1]: http://fluentd.org/
   [2]: https://github.com/tagomoris/fluent-plugin-growthforecast
   [3]: https://github.com/sabottenda/fluent-plugin-bufferize
+
+## patch
+
+- [v0.1.3...v0.2.0](https://github.com/fluent-plugins-nursery/fluent-plugin-out-http/compare/v0.1.3...v0.2.0)
+
+## Note
+```bash
+rbenv local 1.9.3-p551
+gem install bundler -v 1.9.0
+bundle install --path vendor/bundle
+bundle exec rake test
+```
