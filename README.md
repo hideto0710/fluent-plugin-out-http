@@ -16,6 +16,7 @@ A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint.
       authentication  basic  # default: none
       username        alice  # default: ''
       password        bobpop # default: ''
+      custom_headers  {"token":"arbitrary"} # default: {}
     </match>
 
 ## Usage notes
@@ -33,6 +34,7 @@ Heavily based on [fluent-plugin-growthforecast][2]
 ## patch
 
 - [v0.1.3...v0.2.0](https://github.com/fluent-plugins-nursery/fluent-plugin-out-http/compare/v0.1.3...v0.2.0)
+- [Custom headers](https://github.com/fluent-plugins-nursery/fluent-plugin-out-http/pull/35)
 
 ## Note
 ```bash

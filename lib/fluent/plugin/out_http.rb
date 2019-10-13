@@ -3,6 +3,7 @@ class Fluent::HTTPOutput < Fluent::Output
 
   def initialize
     super
+    require 'json'
     require 'net/https'
     require 'uri'
     require 'yajl'
@@ -26,6 +27,9 @@ class Fluent::HTTPOutput < Fluent::Output
 
   # Raise errors that were rescued during HTTP requests?
   config_param :raise_on_error, :bool, :default => true
+
+  # custom headers
+  config_param :custom_headers, :string, :default => '{}'
 
   # nil | 'none' | 'basic'
   config_param :authentication, :string, :default => nil
@@ -86,6 +90,9 @@ class Fluent::HTTPOutput < Fluent::Output
   end
 
   def set_header(req, tag, time, record)
+    JSON.parse(@custom_headers).each do |k,v|
+      req[k] = v
+    end
     req
   end
 
