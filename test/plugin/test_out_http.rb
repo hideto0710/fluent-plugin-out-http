@@ -275,6 +275,9 @@ class HTTPOutputTest < HTTPOutputTestBase
     assert_equal 20, record[:json]['field2']
     assert_equal 10, record[:json]['field3']
     assert_equal 1, record[:json]['otherfield']
+    assert_nothing_raised ArgumentError do
+      Date.strptime(record[:json]['time'], "%Y-%m-%dT%H:%M:%S%z")
+    end
     assert_equal binary_string, record[:json]['binary']
     assert_nil record[:auth]
   end

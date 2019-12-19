@@ -82,7 +82,7 @@ class Fluent::HTTPOutput < Fluent::Output
 
   def set_body(req, tag, time, record)
     if @serializer == :json
-      set_json_body(req, record)
+      set_json_body(req, time, record)
     else
       req.set_form_data(record)
     end
@@ -96,7 +96,10 @@ class Fluent::HTTPOutput < Fluent::Output
     req
   end
 
-  def set_json_body(req, data)
+  def set_json_body(req, time, data)
+    if data['time'].nil? && time.is_a?(Integer)
+      data['time'] = Time.at(time).utc.to_datetime.rfc3339
+    end
     req.body = Yajl.dump(data)
     req['Content-Type'] = 'application/json'
   end
