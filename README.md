@@ -17,6 +17,7 @@ A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint.
       username        alice  # default: ''
       password        bobpop # default: ''
       custom_headers  {"token":"arbitrary"} # default: {}
+      bulk_request    false # default: false
     </match>
 
 ## Usage notes
