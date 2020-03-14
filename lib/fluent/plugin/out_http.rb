@@ -36,6 +36,8 @@ class Fluent::HTTPOutput < Fluent::Output
   config_param :username, :string, :default => ''
   config_param :password, :string, :default => '', :secret => true
 
+  config_param :bulk_request, :bool, :default => false
+
   def configure(conf)
     super
 
@@ -54,10 +56,10 @@ class Fluent::HTTPOutput < Fluent::Output
 
     http_methods = [:get, :put, :post, :delete]
     @http_method = if http_methods.include? @http_method.intern
-                    @http_method.intern
-                  else
-                    :post
-                  end
+                     @http_method.intern
+                   else
+                     :post
+                   end
 
     @auth = case @authentication
             when 'basic' then :basic
@@ -66,6 +68,10 @@ class Fluent::HTTPOutput < Fluent::Output
             end
 
     @last_request_time = nil
+
+    if @bulk_request
+      @serializer = :x_ndjson # secret settings for bulk_request
+    end
   end
 
   def start
@@ -83,6 +89,8 @@ class Fluent::HTTPOutput < Fluent::Output
   def set_body(req, tag, time, record)
     if @serializer == :json
       set_json_body(req, time, record)
+    elsif @serializer == :x_ndjson
+      set_bulk_body(req, record)
     else
       req.set_form_data(record)
     end
@@ -104,6 +112,18 @@ class Fluent::HTTPOutput < Fluent::Output
     req['Content-Type'] = 'application/json'
   end
 
+  def set_bulk_body(req, data)
+    arr = []
+    data.each do |time, record|
+      if record['time'].nil? && time.is_a?(Integer)
+        record['time'] = Time.at(time).utc.to_datetime.rfc3339
+      end
+      arr.push(Yajl.dump(record))
+    end
+    req.body = arr.join("\n")
+    req['Content-Type'] = 'application/x-ndjson'
+  end
+
   def create_request(tag, time, record)
     url = format_url(tag, time, record)
     uri = URI.parse(url)
@@ -121,7 +141,7 @@ class Fluent::HTTPOutput < Fluent::Output
     opts
   end
 
-  def send_request(req, uri)    
+  def send_request(req, uri)
     is_rate_limited = (@rate_limit_msec != 0 and not @last_request_time.nil?)
     if is_rate_limited and ((Time.now.to_f - @last_request_time) * 1000.0 < @rate_limit_msec)
       $log.info('Dropped request due to rate limiting')
@@ -144,14 +164,14 @@ class Fluent::HTTPOutput < Fluent::Output
       $log.warn "Net::HTTP.#{req.method.capitalize} raises exception: #{e.class}, '#{e.message}'"
       raise e if @raise_on_error
     else
-       unless res and res.is_a?(Net::HTTPSuccess)
-          res_summary = if res
-                           "#{res.code} #{res.message} #{res.body}"
-                        else
-                           "res=nil"
-                        end
-          $log.warn "failed to #{req.method} #{uri} (#{res_summary})"
-       end #end unless
+      unless res and res.is_a?(Net::HTTPSuccess)
+        res_summary = if res
+                        "#{res.code} #{res.message} #{res.body}"
+                      else
+                        "res=nil"
+                      end
+        $log.warn "failed to #{req.method} #{uri} (#{res_summary})"
+      end #end unless
     end # end begin
   end # end send_request
 
@@ -160,9 +180,19 @@ class Fluent::HTTPOutput < Fluent::Output
     send_request(req, uri)
   end
 
+  def handle_records(tag, time, es)
+    req, uri = create_request(tag, time, es)
+    send_request(req, uri)
+  end
+
   def emit(tag, es, chain)
-    es.each do |time, record|
-      handle_record(tag, time, record)
+    if @bulk_request
+      time = Fluent::Engine.now
+      handle_records(tag, time, es)
+    else
+      es.each do |time, record|
+        handle_record(tag, time, record)
+      end
     end
     chain.next
   end

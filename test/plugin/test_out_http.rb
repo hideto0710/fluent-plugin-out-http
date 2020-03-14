@@ -65,6 +65,12 @@ class HTTPOutputTestBase < Test::Unit::TestCase
           record = {:auth => nil}
           if req.content_type == 'application/json'
             record[:json] = Yajl.load(req.body)
+          elsif req.content_type == 'application/x-ndjson'
+            data = []
+            req.body.each_line { |l|
+              data << Yajl.load(l)
+            }
+            record[:x_ndjson] = data
           else
             record[:form] = Hash[*(req.body.split('&').map{|kv|kv.split('=')}.flatten)]
           end
@@ -280,6 +286,16 @@ class HTTPOutputTest < HTTPOutputTestBase
     end
     assert_equal binary_string, record[:json]['binary']
     assert_nil record[:auth]
+  end
+
+  def test_emit_x_ndjson
+    binary_string = "\xe3\x81\x82"
+    d = create_driver CONFIG_JSON + %[bulk_request]
+    d.emit({ 'field1' => 50, 'field2' => 20, 'field3' => 10, 'otherfield' => 1, 'binary' => binary_string })
+    d.run
+    assert_equal 1, @posts.size
+    record = @posts[0]
+    assert_equal 50, record[:x_ndjson][0]['field1']
   end
 
   def test_http_error_is_raised
