@@ -18,6 +18,7 @@ A generic [fluentd][1] output plugin for sending logs to an HTTP endpoint.
       password        bobpop # default: ''
       custom_headers  {"token":"arbitrary"} # default: {}
       bulk_request    false # default: false
+      recoverable_status_codes 503, 400 # default: 503
     </match>
 
 ## Usage notes

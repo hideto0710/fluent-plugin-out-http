@@ -1,6 +1,8 @@
 class Fluent::HTTPOutput < Fluent::Output
   Fluent::Plugin.register_output('http', self)
 
+  class RecoverableResponse < StandardError; end
+
   def initialize
     super
     require 'json'
@@ -27,6 +29,9 @@ class Fluent::HTTPOutput < Fluent::Output
 
   # Raise errors that were rescued during HTTP requests?
   config_param :raise_on_error, :bool, :default => true
+
+  # Specify recoverable error codes
+  config_param :recoverable_status_codes, :array, value_type: :integer, default: [503]
 
   # custom headers
   config_param :custom_headers, :string, :default => '{}'
@@ -170,7 +175,11 @@ class Fluent::HTTPOutput < Fluent::Output
                       else
                         "res=nil"
                       end
-        $log.warn "failed to #{req.method} #{uri} (#{res_summary})"
+        if @recoverable_status_codes.include?(res.code.to_i)
+          raise RecoverableResponse, res_summary
+        else
+          $log.warn "failed to #{req.method} #{uri} (#{res_summary})"
+        end
       end #end unless
     end # end begin
   end # end send_request
